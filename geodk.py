@@ -11,9 +11,6 @@ def get_geo_info(geoname):
   info = {}
   for typ,d in zip(['Post_nummer','Kommune','Landsdel','Region'],[pn2pnum,(pnr2kom,p2kom),(kom2reg,kom2reg),reg2reg]): #
     # check if input is either region, kommune, or postnr.
-    if typ=='Region':
-        print(geoname)
-        print(geoname in d)
     if type(d)==tuple:
       for di in d:
         if geoname in di:
@@ -24,17 +21,22 @@ def get_geo_info(geoname):
             geoname = info[typ]
           if typ=='Post_nummer':
             info['Navn'] = geoname
+            geoname = info[typ]
           if typ=='Landsdel':
             info['Kommune'] = geoname
+            geoname = info[typ]
 
     else:
       if geoname in d:
         info[typ] = d[geoname]
         if typ=='Kommune':
           info['Postnummer'] = geoname
+          geoname = info[typ]
         if typ=='Post_nummer':
             info['Navn'] = geoname
+            geoname = info[typ]
         if typ=='Landsdel':
             info['Kommune'] = geoname
+            geoname = info[typ]
         geoname = info[typ]
   return info
