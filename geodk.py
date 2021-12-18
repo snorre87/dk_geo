@@ -1,8 +1,10 @@
 import pickle
 import requests
-with open('geo_lookups.pkl','wb') as f:
-  f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
-  f.close()
+import os
+if not os.path.isfile('geo_lookups.pkl'):
+    with open('geo_lookups.pkl','wb') as f:
+      f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
+      f.close()
 pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg = pickle.load(open('geo_lookups.pkl','rb'))
 
 def get_geo_info(geoname):
