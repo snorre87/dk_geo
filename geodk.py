@@ -26,7 +26,7 @@ def get_geo_info(geoname):
 
     else:
       if geoname in d:
-        info[typ] = d
+        info[typ] = d[geoname]
         if typ=='Kommune':
           info['Postnummer'] = geoname
         if typ=='Post_nummer':
