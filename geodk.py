@@ -7,6 +7,8 @@ pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip = pickle.load(open('geo_l
 
 def get_geo_info(geoname):
   info = {}
+  assert type(geoname)==str, 'Input has to be string'
+
   for typ,d in zip(['Sogn','Post_nummer','Kommune','Landsdel','Region'],[sogn2zip,pn2pnum,(pnr2kom,p2kom),(kom2reg,kom2reg),reg2reg]): #
     # check if input is either region, kommune, or postnr.
     if type(d)==tuple:
@@ -24,7 +26,7 @@ def get_geo_info(geoname):
 
     else:
       if geoname in d:
-        info[typ] = d
+        info[typ] = d[geoname]
         if typ=='Kommune':
           info['Postnummer'] = geoname
         if typ=='Post_nummer':
