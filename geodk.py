@@ -5,11 +5,16 @@ with open('geo_lookups.pkl','wb') as f:
     f.close()
 pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip = pickle.load(open('geo_lookups.pkl','rb'))
 pnum2pn = {j:i for i,j in pn2pnum.items()}
+final_regs = set(reg2reg.values())
+
 def get_geo_info(geoname):
     info = {}
     assert type(geoname)==str, 'Input has to be string'
     ds = [pn2pnum,(pnr2kom,p2kom),(kom2reg,kom2reg),reg2reg]
     typs = ['Postnummer','Kommune','Landsdel','Region']
+    ### Fix for DST.dks use of Region.
+    geoname = geoname.replace('Region ','')
+    ###
     if geoname in sogn2zip:
         info['Sogn'] = geoname
         geoname = sogn2zip[geoname]
@@ -38,4 +43,6 @@ def get_geo_info(geoname):
                 else:
                     info[typs[i-1]] = geoname
                 geoname = info[typ]
+    if geoname in final_regs:
+        info['Region'] = geoname
     return info
