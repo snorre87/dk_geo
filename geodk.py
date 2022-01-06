@@ -46,7 +46,7 @@ def get_geo_info(geoname):
                 geoname = info[typ]
     if geoname in final_regs:
         info['Region'] = geoname
-    for key,val in info.items():
+    for key,val in list(info.items()):
         if val in z2geo:
             info['zip_lat_lng'] = z2geo[val]
         if val in sogn2geo:
