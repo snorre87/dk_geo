@@ -9,6 +9,17 @@ pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip,lat_lookups = pickle.load
 pnum2pn = {j:i for i,j in pn2pnum.items()}
 final_regs = set(reg2reg.values())
 version = 0.1
+reg2main = {'Bornholm': 'Bornholm',
+ 'Byen København': 'Sjælland',
+ 'Fyn': 'Fyn',
+ 'Københavns omegn': 'Sjælland',
+ 'Nordjylland': 'Jylland',
+ 'Nordsjælland': 'Sjælland',
+ 'Sydjylland': 'Jylland',
+ 'Vest- og Sydsjælland': 'Sjælland',
+ 'Vestjylland': 'Jylland',
+ 'Østjylland': 'Jylland',
+ 'Østsjælland': 'Sjælland'}
 def get_geo_info(geoname):
     info = {}
     assert type(geoname)==str, 'Input has to be string'
@@ -47,7 +58,13 @@ def get_geo_info(geoname):
                 geoname = info[typ]
     if geoname in final_regs:
         info['Region'] = geoname
+    if "Landsdel" in info:
+        info['mainland'] = reg2main[info['Landsdel']]
     for key,val in list(info.items()):
+        if key=='Postnumer_Navn':
+            continue
+        if key not in lat_lookups:
+            continue
         d = lat_lookups[key]
         if val in d:
             info['%s_latlng'%key] = d[val]
