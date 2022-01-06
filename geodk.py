@@ -3,7 +3,7 @@ import requests
 with open('geo_lookups.pkl','wb') as f:
     f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
     f.close()
-pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip,z2geo,sogn2geo = pickle.load(open(path+'geo_lookups.pkl','rb'))
+pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip,z2geo,sogn2geo = pickle.load(open('geo_lookups.pkl','rb'))
 pnum2pn = {j:i for i,j in pn2pnum.items()}
 final_regs = set(reg2reg.values())
 
