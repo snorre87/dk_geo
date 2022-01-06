@@ -49,6 +49,6 @@ def get_geo_info(geoname):
         info['Region'] = geoname
     for key,val in list(info.items()):
         d = lat_lookups[key]
-        if val ind:
+        if val in d:
             info['%s_latlng'%key] = d[val]
     return info
