@@ -82,6 +82,7 @@ def haversine(lat1,lon1,lat2,lon2):
     return km
 
 def get_geo_info_latlon(lat,lon):
+    "Geographical Info is inferred from the nearest locating the nearest Sogn (not a bounding box)."
     dist = []
     for sogn,(lat2,lon2) in lat_lookups['Sogn'].items():
         try: # some values are nan
