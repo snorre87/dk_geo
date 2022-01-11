@@ -83,7 +83,10 @@ def haversine(lat1,lon1,lat2,lon2):
 
 def get_geo_info_latlon(lat,lon):
     dist = []
-    for sogn,(lat2,lon2) in lat_lookups.items():
-        distance.append((haversine(lat,lon,lat2,lon2),sogn))
+    for sogn,(lat2,lon2) in lat_lookups['Sogn'].items():
+        try: # some values are nan
+            distance.append((haversine(lat,lon,lat2,lon2),sogn))
+        except:
+            pass
     sogn = min(distance)[-1]
     return get_geo_info(sogn)
