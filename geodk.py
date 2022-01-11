@@ -85,8 +85,8 @@ def get_geo_info_latlon(lat,lon):
     dist = []
     for sogn,(lat2,lon2) in lat_lookups['Sogn'].items():
         try: # some values are nan
-            distance.append((haversine(lat,lon,lat2,lon2),sogn))
+            dist.append((haversine(lat,lon,lat2,lon2),sogn))
         except:
             pass
-    sogn = min(distance)[-1]
+    sogn = min(dist)[-1]
     return get_geo_info(sogn)
