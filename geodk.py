@@ -69,3 +69,21 @@ def get_geo_info(geoname):
         if val in d:
             info['%s_latlng'%key] = d[val]
     return info
+import math
+from numpy import cos, sin, arcsin, sqrt
+from math import radians
+def haversine(lat1,lon1,lat2,lon2):
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * arcsin(sqrt(a))
+    km = 6367 * c
+    return km
+
+def get_geo_info_latlon(lat,lon):
+    dist = []
+    for sogn,(lat2,lon2) in lat_lookups.items():
+        distance.append((haversine(lat,lon,lat2,lon2),sogn))
+    sogn = min(distance)[-1]
+    return get_geo_info(sogn)
