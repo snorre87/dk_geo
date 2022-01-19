@@ -104,4 +104,6 @@ def get_geo_info_latlon(lat,lon):
         except:
             pass
     sogn = min(dist)[-1]
-    return get_geo_info(sogn)
+    info = get_geo_info(sogn)
+    info['distance_closest_sogn'] = min(dist)[0]
+    return info
