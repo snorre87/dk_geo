@@ -5,15 +5,15 @@ if not os.path.isfile('geo_lookups.pkl'):
     with open('geo_lookups.pkl','wb') as f:
         f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
         f.close()
-if not os.path.isfile('kom2code.pkl'):
-    with open('kom2code.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kom2code.pkl').content)
+if not os.path.isfile('kom2kode.pkl'):
+    with open('kom2kode.pkl','wb') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kom2kode.pkl').content)
         f.close()
 
 pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip,lat_lookups = pickle.load(open('geo_lookups.pkl','rb'))
 pnum2pn = {j:i for i,j in pn2pnum.items()}
 final_regs = set(reg2reg.values())
-kom2code = pickle.load(open('kom2code.pkl','rb'))
+kom2code = pickle.load(open('kom2kode.pkl','rb'))
 version = 0.1
 reg2main = {'Bornholm': 'Bornholm',
  'Byen København': 'Sjælland',
