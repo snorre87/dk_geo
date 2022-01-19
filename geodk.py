@@ -6,6 +6,8 @@ if not os.path.isfile('geo_lookups.pkl'):
         f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
         f.close()
 if not os.path.isfile('kom2kode.pkl'):
+    # kom2code = dict(pd.read_html('https://www.dst.dk/da/Statistik/dokumentation/Times/stofmisbrug/kommunekode')[0][['Tekst','Kode']].values)
+    # pickle.dump(kom2code,open(path+'kom2code.pkl','wb'))
     with open('kom2kode.pkl','wb') as f:
         f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kom2kode.pkl').content)
         f.close()
