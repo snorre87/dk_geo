@@ -105,5 +105,5 @@ def get_geo_info_latlon(lat,lon):
             pass
     sogn = min(dist)[-1]
     info = get_geo_info(sogn)
-    info['distance_closest_sogn'] = min(dist)[0]
+    info['distance_closest_sogn_km'] = min(dist)[0]
     return info
