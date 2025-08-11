@@ -28,6 +28,47 @@ reg2main = {'Bornholm': 'Bornholm',
  'Vestjylland': 'Jylland',
  'Østjylland': 'Jylland',
  'Østsjælland': 'Sjælland'}
+
+dk_polygons = [
+    # DK
+    [(8.1, 54.5), (8.1, 57.8), (12.7, 57.8), (12.7, 54.5), (8.1, 54.5)],
+     # Bornholm
+    [(14.6, 54.9), (14.6, 55.3), (15.3, 55.3), (15.3, 54.9), (14.6, 54.9)],
+     # Greenland
+    [(-75.0, 59.0), (-75.0, 83.0), (-10.0, 83.0), (-10.0, 59.0), (-75.0, 59.0)],
+    # Faroe Islands 
+    [(-7.8, 61.2), (-7.8, 62.5), (-6.0, 62.5), (-6.0, 61.2), (-7.8, 61.2)]]
+def point_in_polygon(lon, lat, polygon):
+    """
+    Ray casting algorithm for testing if a point is inside a polygon.
+    polygon: list of (lon, lat) tuples.
+    """
+    inside = False
+    n = len(polygon)
+    
+    for i in range(n - 1):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[i + 1]
+        
+        # Check if the latitude is between the y-coords of the edge
+        if ((y1 > lat) != (y2 > lat)):
+            # Find x coordinate where the line at 'lat' crosses the edge
+            x_intersect = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if x_intersect > lon:
+                inside = not inside
+                
+    return inside
+def is_in_denmark(lat, lon):
+    """Check if (lat, lon) is inside Denmark's bounding polygon."""
+    for pol in dk_polygons:
+        val = point_in_polygon(lon, lat, pol)
+        if val == True:
+            return True
+    return False
+
+
+
+
 def get_geo_info(geoname):
     info = {}
     assert type(geoname)==str, 'Input has to be string'
@@ -99,6 +140,9 @@ def haversine(lat1,lon1,lat2,lon2):
 
 def get_geo_info_latlon(lat,lon):
     "Geographical Info is inferred from the nearest locating the nearest Sogn (not a bounding box)."
+    indk = is_in_denmark(lat,lon)
+    if not indk:
+        return {'Sogn':'Not in DK'}
     dist = []
     for sogn,(lat2,lon2) in lat_lookups['Sogn'].items():
         try: # some values are nan
