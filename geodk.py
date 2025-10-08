@@ -2,29 +2,16 @@ import pickle
 import requests,json
 import os
 from collections import Counter
-if not os.path.isfile('dkpolygons.pkl'):
-    with open('dkpolygons.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/dkpolygons.pkl').content)            
-        f.close()
-    with open('dkpolygons2.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/dkpolygons2.pkl').content)    
-        f.close()
-if not os.path.isfile('geo-entity_graph.json'):
-    with open('geo-entity_graph.json','w') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo-entity_graph.json').content)            
-        f.close()
-if not os.path.isfile('kode2namelookup.json'):
-    with open('kode2namelookup.json','w') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kode2namelookup.json').content)            
-        f.close()
+ready = True
+for fn in ['dkpolygons.pkl','dkpolygons2.pkl','kode2area.json','geo-entity_graph.json',
+           'kode2namelookup.json']:
+    if not os.path.isfile(fn):
+        ready = False
+        print(fn)
 
-if not os.path.isfile('kode2area.json'):
-    with open('kode2area.json','w') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kode2area.json').content)            
-        f.close()
-
-
-
+if not ready:
+    import prepare_geograph_geodk
+print('geo-entity graph ready')
 
 
 version = 0.2
