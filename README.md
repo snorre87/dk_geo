@@ -1,7 +1,9 @@
 # geodk.py
  Script for looking up administrative entitities from latitude and longitude, or by string matching. Build on polygon data from https://api.dataforsyningen.dk. 
-First time usage it will download all polygon data and build geo-entity-graph. This will take some time and. 
- 
+
+First time usage it will download all polygon data and build geo-entity-graph. This will take some time. 
+
+ ## Example usage
 ```python
 import geodk
 lat,lon = 55.676098,12.568337
