@@ -1,27 +1,33 @@
 import pickle
-import requests
+import requests,json
 import os
-if not os.path.isfile('geo_lookups.pkl'):
-    with open('geo_lookups.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo_lookups.pkl').content)
+from collections import Counter
+if not os.path.isfile('dkpolygons.pkl'):
+    with open('dkpolygons.pkl','wb') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/dkpolygons.pkl').content)            
         f.close()
-if not os.path.isfile('stringlookuplats.pkl'):
-    with open('stringlookuplats.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/stringlookuplats.pkl').content)            
+    with open('dkpolygons2.pkl','wb') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/dkpolygons2.pkl').content)    
         f.close()
-e2lat = pickle.load(open('stringlookuplats.pkl','rb'))
-if not os.path.isfile('kom2kode.pkl'):
-    # kom2code = dict(pd.read_html('https://www.dst.dk/da/Statistik/dokumentation/Times/stofmisbrug/kommunekode')[0][['Tekst','Kode']].values)
-    # pickle.dump(kom2code,open(path+'kom2code.pkl','wb'))
-    with open('kom2kode.pkl','wb') as f:
-        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kom2kode.pkl').content)
+if not os.path.isfile('geo-entity_graph.json'):
+    with open('geo-entity_graph.json','w') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/geo-entity_graph.json').content)            
+        f.close()
+if not os.path.isfile('kode2namelookup.json'):
+    with open('kode2namelookup.json','w') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kode2namelookup.json').content)            
         f.close()
 
-pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip,lat_lookups = pickle.load(open('geo_lookups.pkl','rb'))
-pnum2pn = {j:i for i,j in pn2pnum.items()}
-final_regs = set(reg2reg.values())
-kom2code = pickle.load(open('kom2kode.pkl','rb'))
-version = 0.1
+if not os.path.isfile('kode2area.json'):
+    with open('kode2area.json','w') as f:
+        f.write(requests.get('https://github.com/snorre87/dk_geo/raw/main/kode2area.json').content)            
+        f.close()
+
+
+
+
+
+version = 0.2
 reg2main = {'Bornholm': 'Bornholm',
  'Byen København': 'Sjælland',
  'Fyn': 'Fyn',
@@ -34,6 +40,7 @@ reg2main = {'Bornholm': 'Bornholm',
  'Østjylland': 'Jylland',
  'Østsjælland': 'Sjælland'}
 
+dk_bbox_refs = ['DK','Bornholm','Greenland','Faroe Islands']
 dk_polygons = [
     # DK
     [(8.1, 54.5), (8.1, 57.8), (12.7, 57.8), (12.7, 54.5), (8.1, 54.5)],
@@ -43,14 +50,13 @@ dk_polygons = [
     [(-75.0, 59.0), (-75.0, 83.0), (-10.0, 83.0), (-10.0, 59.0), (-75.0, 59.0)],
     # Faroe Islands 
     [(-7.8, 61.2), (-7.8, 62.5), (-6.0, 62.5), (-6.0, 61.2), (-7.8, 61.2)]]
-def point_in_polygon(lon, lat, polygon):
-    """
-    Ray casting algorithm for testing if a point is inside a polygon.
-    polygon: list of (lon, lat) tuples.
-    """
+
+def is_in_polygon_pure(lon,lat,polygon):
+    xs, ys = zip(*polygon)
+    if not (min(xs) <= lon <= max(xs) and min(ys) <= lat <= max(ys)):
+        return False
     inside = False
     n = len(polygon)
-    
     for i in range(n - 1):
         x1, y1 = polygon[i]
         x2, y2 = polygon[i + 1]
@@ -63,90 +69,47 @@ def point_in_polygon(lon, lat, polygon):
                 inside = not inside
                 
     return inside
-def is_in_denmark(lat, lon):
-    """Check if (lat, lon) is inside Denmark's bounding polygon."""
-    for pol in dk_polygons:
-        val = point_in_polygon(lon, lat, pol)
-        if val == True:
+
+try:
+    from shapely.geometry import Point, Polygon
+    def is_in_polygon(lon,lat,polygon):
+        if type(polygon)==list:
+            return is_in_polygon_pure(lon,lat,polygon)
+        p = Point((lon,lat))
+        return polygon.contains(p)
+    print('Shapely as backend')
+except Exception as e:
+    print(str(e))
+    print('shapely is probably not installed')
+
+
+
+try:
+    import geopandas as gpd
+    polygons = pickle.load(open('dkpolygons.pkl','rb'))
+except:
+    print('geopandas not installed will use pure python method')
+    polygons = pickle.load(open('dkpolygons2.pkl','rb'))
+
+def point_in_polygon(lon, lat, polygon,interior=False):
+    """
+    Ray casting algorithm for testing if a point is inside a polygon.
+    polygon: list of (lon, lat) tuples.
+    """
+    if type(polygon)!=list:
+        
+        if is_in_polygon(lon,lat,polygon):
             return True
+        return False
+    if interior!=False:
+        for i in interior:
+            inside = point_in_polygon(interior)
+            if inside:
+                return False
+    if is_in_polygon_pure(lon,lat,polygon):
+        return True
     return False
 
-
-
-
-def get_geo_info(geoname,trust_zizpcodes = True):
-    
-    assert type(geoname)==str, 'Input has to be string'
-    info = {'string':geoname}
-    geoname = geoname.strip()
-    ds = [pn2pnum,(pnr2kom,p2kom),(kom2reg,kom2reg),reg2reg]
-    typs = ['Postnummer','Kommune','Landsdel','Region']
-    ### Fix for DST.dks use of Region.
-    geoname = geoname.replace('Region ','')
-    ###
-    
-    if geoname in sogn2zip or geoname+' Sogn' in sogn2zip:
-        if not geoname in sogn2zip:
-            geoname = geoname+' Sogn'
-        info['Sogn'] = geoname
-        info['match'] = 'Sogn'
-        info['match_level'] = 0
-        geoname = sogn2zip[geoname]
-        try:
-            # get postnummer navn
-            geoname = pnum2pn[geoname]
-        except:
-            pass
-    for i in range(len(typs)):
-        typ,d = typs[i],ds[i]
-        # check if input is either region, kommune, or postnr.
-        if type(d)==tuple:
-            for di in d:
-                if geoname in di:
-                    if not 'match' in info:
-                        info['match'] = typs[i-1]
-                        info['match_level'] = i+1
-                    info[typ] = di[geoname]
-                    if i==0:
-                        info['Postnummer_Navn'] = geoname
-                    else:
-                        info[typs[i-1]] = geoname
-                    geoname = info[typ]
-        else:
-            if geoname in d:
-                if not 'match' in info:
-                    info['match'] = typ
-                info[typ] = d[geoname]
-                if i==0:
-                    info['Postnummer_Navn'] = geoname
-                else:
-                    info[typs[i-1]] = geoname
-                geoname = info[typ]
-    if geoname in final_regs:
-        info['Region'] = geoname
-        if not 'match' in info:
-            info['match'] = 'Region'
-    if "Landsdel" in info:
-        info['mainland'] = reg2main[info['Landsdel']]
-    if 'Kommune' in info:
-        kom = info['Kommune']
-        try:
-            k_code = kom2code[kom]
-            info['Kommune_kode'] = k_code
-        except:
-            pass
-
-    for key,val in list(info.items()):
-        if key=='Postnumer_Navn':
-            continue
-        if key not in lat_lookups:
-            continue
-        d = lat_lookups[key]
-        if val in d:
-            info['%s_latlng'%key] = d[val]
-    if len(info)==1:
-        return {}
-    return info
 import math
 from numpy import cos, sin, arcsin, sqrt
 from math import radians
@@ -159,48 +122,163 @@ def haversine(lat1,lon1,lat2,lon2):
     km = 6367 * c
     return km
 
-def get_geo_info_latlon(lat,lon):
-    "Geographical Info is inferred from the nearest locating the nearest Sogn (not a bounding box)."
-    indk = is_in_denmark(lat,lon)
-    if not indk:
-        return {}
-        return {'Sogn':'Not in DK'}
-    dist = []
-    for sogn,(lat2,lon2) in lat_lookups['Sogn'].items():
-        try: # some values are nan
-            dist.append((haversine(lat,lon,lat2,lon2),sogn))
-        except:
-            pass
-    sogn = min(dist)[-1]
-    info = get_geo_info(sogn)
-    info['distance_closest_sogn_km'] = min(dist)[0]
-    return info
+
+def is_in_denmark(lat, lon):
+    """Check if (lat, lon) is inside Denmark's bounding polygon."""
+    for num,pol in enumerate(dk_polygons):
+        val = point_in_polygon(lon, lat, pol)
+        if val == True:
+            return dk_bbox_refs[num]
+    return False
+
+def get_graph_overlap(keys):
+    c = Counter()
+    for key in keys:
+        
+        for j in G_w[key]:
+            if not j in keys:
+                c[j]+=1
+    return [i for i,count in c.most_common() if count==len(keys)]
+
+
+def get_geo_info_latlon(inp,lowest_level='sogne',add_all_types=True):
+    if type(inp)!=str:
+        lat,lon = inp
+        d = recursive_lookup(lat,lon,lowest_level=lowest_level)
+        if not add_all_types:
+            return get_meta_data(d)
+        keys = []
+        for key in all_types:
+            if key in d:
+                keys+=d[key]
+        susp = get_graph_overlap(keys)
+        
+        l = []
+        for i in susp:
+            pls = polygons[i]['polygon']
+            for num,geo in enumerate(pls):
+                if is_in_polygon(lon,lat,geo):
+                    l.append(i) 
+        for typ in set([i.split('_')[0] for i in l]):
+            temp = [i for i in l if typ==i.split('_')[0]]
+            if not typ in d:
+                d[typ] = temp
+            else:
+                print('Not supposed to be like this')
+                d[typ]+=temp
+        return get_meta_data(d)
+    else:
+        raise ValueError('Input is malformed')
+
+
+# get suspects from region to sogn
+regioner = [i for i in polygons if 'regioner' in i]
+types = ['sogne','postnumre','kommuner','regioner']
+all_types = ['sogne','postnumre','opstillingskredse','kommuner','retskredse','politikredse','regioner']
+def recursive_lookup(lat,lon,keys=False,typ='regioner',d=False,lowest_level='sogne',types = all_types):
+    if keys==False:
+        indk = is_in_denmark(lat,lon)
+        keys = regioner
+        if indk==False:
+            return {'indk':False}
+        l = []
+        for i in keys:
+            pls = polygons[i]['polygon']
+            for num,geo in enumerate(pls):
+                if is_in_polygon(lon,lat,geo):
+                    l.append(i)
+                    break
+                    #l.append('%s_%d'%(i,num))    
+        typ = 'regioner'
+        d = {typ:l,'indk':indk}
+        keys = l
+    
+    d['latlon'] = (lat,lon)
+    typ_key = keys[0].split('_')[0]
+    typ_num = types.index(typ)-1
+    typ = types[typ_num]
+    neighbors = set()
+    for key in keys:
+        neighbors.update(G_w[key])
+    l = []
+    
+        
+    for key in neighbors:
+        
+        typ2 = key.split('_')[0]
+        if typ2!=typ:
+            continue 
+    
+        #k,num = key.rsplit('_',maxsplit=1)
+        #num = int(num)
+        k = key
+        geo = polygons[k]['polygon'][0]
+        if is_in_polygon(lon,lat,geo):
+            l.append(key)
+    d[typ] = l
+    
+    if len(l)==0:
+        l = keys
+    if typ==lowest_level:
+        d['latlon_match'] = polygons[keys[0]]['centroids_latlon']
+    else:
+        d = recursive_lookup(lat,lon,keys=l,typ=typ,d=d,lowest_level=lowest_level,types=types)
+    return d
 
 
 
-pnr_names = set(p2kom)
-geonames = set(e2lat)|pnr_names
-dkZIP = set(pnr2kom)
+k2name,name2k = json.load(open('kode2namelookup.json','r'))
 
-l = pn2pnum,pnr2kom,p2kom,kom2reg,kom2reg,reg2reg,sogn2zip
-from collections import Counter
-def clean_ent(i):
-    return i.split(' Sogn')[0]
-for i in l:    
-    for j in i:
-        if j.isdigit():
-            continue
-        geonames.add(clean_ent(j))    
+geoname_types = set([#'ejerlav',
+ 'kommuner',
+ 'postnumre',
+ 'regioner',
+  'sogne',
+ 'supplerendebynavne2'])
+# these should be used for geolookup.
+# data should be looked up in the Graph.
+geonames = set()
+for k,name in k2name.items():
+    for typ in geoname_types:
+        if typ in k:
+            geonames.add(name)
+
+dkZIP = set([i.split('_')[1] for i in k2name if 'postnumre' in i])
+
 import re
 token_re = re.compile('\w+')
 zip_re = re.compile(r'\b\d{4}\b')
+sort_geonames = sorted(geonames,key=len,reverse=True)
+G_w = json.load(open('geo-entity_graph.json','r'))
+k2area = json.load(open('kode2area.json','r'))
+
+def get_meta_data(d):
+    new = {}
+    for key in d:
+        if 'latlon' in key:
+            new[key] = d[key]
+            continue
+        val = d[key]
+        if not type(val)==list:
+            new[key] = val
+            continue
+        l = []
+        l2 = []
+        new['%s_kode'%key] = d[key]
+        for i in val:
+            name = k2name[i]
+            if not name in l:
+                l.append(name)
+        new[key] = list(l)
+    return new
+
+
 def extract_geo_ents(string,allow_endings = [],tokenizer=token_re.findall):
     # do a simple match of names
-    m = sorted([i for i in geonames if i in string],key=len,reverse=True)
+    m = [i for i in sort_geonames if i in string]
     m2 = []
     tokens = set()
     for i in m:
-
         if i in tokens:
             continue
         m2.append(i)
@@ -238,57 +316,84 @@ def extract_geo_ents(string,allow_endings = [],tokenizer=token_re.findall):
             if e in tokens:
                 ents.append(e)
     return ents,zips
-
-def get_ent_info(ents,zips,trust_zipcodes = True,get_ambigues=False):
-    # first check if some of the ents are in the administrative data
-    l = []
-    for e in ents:
-        d = get_geo_info(e)
-        d['matchtype'] = 'admin'
-        if e in e2lat:
-            ex = e2lat[e]
-            d['naddresses'] = ex['naddresses']
-        if len(d)>0:
-            l.append(d)
-        else:
-            ex = e2lat[e]
-            latlon = ex['latlon']
-            d = get_geo_info_latlon(*latlon)
-            d['matchtype'] = 'city-area'
-            d['matchn' ] = ex['count']
-            d['naddresses'] = ex['naddresses']
-            l.append(d)
-            if ex['count']>1:
-                if get_ambigues:
-                    for lat,lon in ex['extra'][1:]:
-                        d = get_geo_info_latlon(*latlon)
-                        d['matchtype'] = 'city-area'
-                        d['matchn' ] = e[e]
-                        d['match_aux'] = True
-                        l.append(d)
-    l2 = []   
-    for z in zips:
-        d = get_geo_info(z)
-        d['matchtype'] = 'zipcode'
-        if len(d)>0:
-            if trust_zipcodes:
-                l.append(d)
-            else:
-                l2.append(d)
-    if len(l2)>0:
-        # compare results
-        # check if same municipality and keep zipcode if matching.
-        if len(l):
-            temp = pd.DataFrame(l)
-            if 'Kommune' in temp.columns:
-                s = set(temp.Kommune)
-                l2 = [i for i in l2 if i['Kommune'] in s]
-                
-                if len(l2)>0:
-                    l = l2
+levels = ['afstemningsomraader', 'ejerlav', 'kommuner', 'landsdele', 'menighedsraadsafstemningsomraader', 'opstillingskredse'
+          , 'politikredse', 'postnumre', 'regioner'
+          , 'retskredse', 'sogne', 'supplerendebynavne2']
+typ2level = {'afstemningsomraader':0, 'ejerlav':0, 'kommuner':2, 'landsdele':5, 'menighedsraadsafstemningsomraader':0, 'opstillingskredse':3
+          , 'politikredse':3, 'postnumre':1, 'regioner':4
+          , 'retskredse':3, 'sogne':0, 'supplerendebynavne2':1}
+def get_geo_info_string(string,trust_zips=False
+                        ,minimum_intersection=0.05,keep_lowest_match=True,
+                       keep_ambivalent=False,keep_match_level_only=True):
+    string = str(string)
     
-    return l
-def get_geo_string(string,trust_zipcodes=True):
     ents,zips = extract_geo_ents(string)
-    l = get_ent_info(ents,zips,trust_zipcodes)
-    return l
+    dat = []
+    if trust_zips:
+        for zi in zips:
+            
+            z = 'postnumre_%s'%zi
+            if z in k2name:
+                match_level = z.split('_')[0] 
+                susp = G_w[z]
+                susp = [i for i,(num,j) in susp.items() if j>minimum_intersection or num==0]    
+                d = {'match_type':'zipcode','matchlevel':'postnumre','matchlevel_num':typ2level['postnumre'],'match_code':z,'match':zi,'nmatches':1,'postnumre':[zi]} 
+                for i in susp:
+                    typ = i.split('_')[0]
+                    if keep_match_level_only==False:
+                        if not typ in d:
+                            d[typ] = []
+                        d[typ].append(i)
+                    else:
+                        if typ2level[typ]>=typ2level[match_level]:
+                            if not typ in d:
+                                d[typ] = []
+                            d[typ].append(i)
+                dat.append(d) 
+    # check if in administrative names:
+    for num,ent in enumerate(ents):
+        if ent in name2k:
+            ks = name2k[ent]
+            ks = [i for i in ks if i.split('_')[0] in geoname_types]
+            edges = []
+            for k in ks:
+                
+                susp = G_w[k]
+                match_level = k.split('_')[0] 
+                if not match_level in geoname_types:
+                    continue
+                susp = [i for i,(num,j) in susp.items() if j>minimum_intersection or num==0]    
+                d = {'match_type':'administrative','matchlevel':match_level,'matchlevel_num':typ2level[match_level],'match_code':k,'match':ent,'nmatches':len(ks),'entity_order':num,match_level:[k]}                
+                
+                for i in susp:
+                    typ = i.split('_')[0]
+                    if keep_match_level_only==False:
+                        if not typ in d:
+                            d[typ] = []
+                        d[typ].append(i)
+                    else:
+                        if typ2level[typ]>=typ2level[match_level]:
+                            if not typ in d:
+                                d[typ] = []
+                            d[typ].append(i)
+                dat.append(d)
+    dat = sorted(dat,key=lambda x: k2area[x['match_code']])
+    
+    dat = [get_meta_data(i) for i in dat]
+    dat2 = [i for i in dat if i['nmatches']==1]
+    
+    if keep_ambivalent==False:
+        dat = dat2
+    if keep_lowest_match==False:
+        return dat 
+    
+    dat2 = [i for i in dat if i['nmatches']==1]
+    if len(dat2)>0:
+        return dat2[0]
+    else:
+        return {}
+def get_geo_info(val,trust_zips=False):
+    if type(val)==str:
+        return get_geo_info_string(val,trust_zips=trust_zips)
+    else:
+        return get_geo_info_latlon(lat,lon)
